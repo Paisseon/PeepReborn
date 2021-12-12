@@ -1,8 +1,11 @@
 Package: ai.paisseon.peepreborn
 Name: Peep Reborn
-Depends: mobilesubstrate
-Version: 1.0
+Author: Paisseon
+Description: Hide status bar with a tap
+Maintainer: Paisseon
+Version: 1.1
+Depends: firmware (>= 13.0), mobilesubstrate
 Architecture: iphoneos-arm
-Description: Hide and show your status bar with one tap!
-Maintainer: paisseon
-Author: paisseon
+Icon: https://paisseon.github.io/info/peepreborn.png
+SileoDepiction: https://paisseon.github.io/info/peepreborn.json
+Depiction: https://paisseon.github.io/info/peepreborn.html

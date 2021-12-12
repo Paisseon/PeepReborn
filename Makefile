@@ -1,16 +1,18 @@
-SYSROOT = $(THEOS)/sdks/iPhoneOS13.3.sdk
+export SYSROOT = $(THEOS)/sdks/iPhoneOS14.4.sdk/
+export ARCHS = arm64 arm64e
+export TARGET = iphone:clang:latest:13.0
+
+FINALPACKAGE = 1
+DEBUG = 0
+
 INSTALL_TARGET_PROCESSES = SpringBoard
+TWEAK_NAME = PeepReborn
+$(TWEAK_NAME)_FILES = $(TWEAK_NAME).x
+$(TWEAK_NAME)_CFLAGS = -fobjc-arc -Wno-error=deprecated-declarations
+$(TWEAK_NAME)_EXTRA_FRAMEWORKS = UIKit
+
+SUBPROJECTS += Prefs
 
 include $(THEOS)/makefiles/common.mk
-
-TWEAK_NAME = PeepReborn
-
-ARCHS = arm64 arm64e
-
-
-PeepReborn_FILES = PeepReborn.x
-PeepReborn_CFLAGS = -fobjc-arc
-PeepReborn_EXTRA_FRAMEWORKS = UIKit
-
-include $(THEOS_MAKE_PATH)/tweak.mk
 include $(THEOS_MAKE_PATH)/aggregate.mk
+include $(THEOS_MAKE_PATH)/tweak.mk

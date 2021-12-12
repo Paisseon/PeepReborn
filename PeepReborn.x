@@ -1,44 +1,53 @@
 #import "PeepReborn.h"
 
-NSUserDefaults *defaults;
-_UIStatusBar *statusBar;
-BOOL didLayoutSubviews = 0;
-
-%hook _UIStatusBar
-- (id) initWithStyle: (long long) arg1 {
- 	self = %orig;
-  	if (self) {
-		statusBar = self;
- 		[self addTapGesture]; // add gesture on init
- 	}
-  	return self;
+static void refreshPrefs() { // prefs by skittyblock
+	CFArrayRef keyList = CFPreferencesCopyKeyList((CFStringRef)bundleIdentifier, kCFPreferencesCurrentUser, kCFPreferencesAnyHost);
+	if (keyList) {
+		settings = (NSMutableDictionary *)CFBridgingRelease(CFPreferencesCopyMultiple(keyList, (CFStringRef)bundleIdentifier, kCFPreferencesCurrentUser, kCFPreferencesAnyHost));
+		CFRelease(keyList);
+	} else settings = nil;
+	if (!settings) settings = [[NSMutableDictionary alloc] initWithContentsOfFile:[NSString stringWithFormat:@"/var/mobile/Library/Preferences/%@.plist", bundleIdentifier]];
+	
+	enabled   = [([settings objectForKey:@"enabled"] ?: @(true)) boolValue];
+	permaHide = [([settings objectForKey:@"permaHide"] ?: @(false)) boolValue];
+	numTaps   = [([settings objectForKey:@"numTaps"] ?: @(1)) intValue];
 }
 
+static void PreferencesChangedCallback(CFNotificationCenterRef center, void* observer, CFStringRef name, const void* object, CFDictionaryRef userInfo) {
+	refreshPrefs();
+}
+
+static void initGhostBar(_UIStatusBar* arg0) {
+	ghostBar = [[UIView alloc] initWithFrame:arg0.bounds]; // frame of the status bar
+	[arg0 addSubview:ghostBar]; // this subview prevents the status bar from disappearing when the foreground view is hidden
+}
+
+%hook _UIStatusBar
 - (void) layoutSubviews {
 	%orig;
-	if (self.foregroundView && !didLayoutSubviews) {
-		self.foregroundView.hidden = [defaults boolForKey:[NSString @"isStatusBarHidden"]]; // check if supposed to be hidden
-		didLayoutSubviews = 1; // minimises layoutSubviews use for efficiency
+	if (permaHide) {
+		self.foregroundView.hidden = true;
+		return;
+	}
+	if (!tapGesture) { // if this gesture doesn't exist already and we don't have a permanent hide
+		self.userInteractionEnabled = true; // let users actually touch the status bar
+		UITapGestureRecognizer* tapGesture = [[UITapGestureRecognizer alloc]initWithTarget:self action:@selector(handleTapGesture:)]; // set up a gesture recogniser
+		tapGesture.numberOfTapsRequired = numTaps; // require the number of taps specified in prefs
+		[self addGestureRecognizer:tapGesture]; // add the gesture recogniser
+		initGhostBar(self); // send this instance of status bar to the ghost bar function
+		self.foregroundView.hidden = isHidden; // determine whether to hide by current hidden value
 	}
 }
 
 %new 
 - (void) handleTapGesture: (id) sender { // when the status bar is tapped
-	[UIView transitionWithView:self duration: 0 options: UIViewAnimationOptionTransitionNone animations: ^{self.foregroundView.hidden = !self.foregroundView.hidden;} completion:^(BOOL finished){ [self addTapGesture]; }]; [defaults setBool:self.foregroundView.hidden forKey:[NSString @"isStatusBarHidden"]]; [defaults synchronize]; // idk what half of this does, just used what the original does ahaha
-}
-
-%new
-- (void) addTapGesture {
-	self.userInteractionEnabled = YES; // basically lets the status bar be tapped
-	if (self.tapGesture) [self removeGestureRecognizer:self.tapGesture]; // removes the current gesture if it exists
-	self.tapGesture = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleTapGesture:)]; // if the status bar is tapped, use the actions defined in handleTapGesture
-	self.tapGesture.numberOfTapsRequired = 1; // only requires a single tap, peep 2.0+ did something with preferences but im too lazy
-	[self addGestureRecognizer:self.tapGesture]; // add the gesture
-	self.fakeStatusBar = [[UIView alloc] initWithFrame:self.bounds]; // make a subview of status bar so it can be tapped whilst hidden
-	[self addSubview:self.fakeStatusBar]; // adds the subview to status bar view
+	self.foregroundView.hidden = !self.foregroundView.hidden; // toggle if hidden
+	isHidden = self.foregroundView.hidden; // set the global variable to match current state
 }
 %end
 
 %ctor {
-	defaults = [[NSUserDefaults alloc] _initWithSuiteName:@"ai.paisseon.peepreborn" container:[NSURL URLWithString:@"/var/mobile"]]; // necessary for caching
+	CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback) PreferencesChangedCallback, (CFStringRef)[NSString stringWithFormat:@"%@.prefschanged", bundleIdentifier], NULL, CFNotificationSuspensionBehaviorDeliverImmediately);
+	refreshPrefs();
+	if (enabled) %init;
 }
