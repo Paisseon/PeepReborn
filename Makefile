@@ -1,18 +1,34 @@
-export SYSROOT = $(THEOS)/sdks/iPhoneOS14.4.sdk/
-export ARCHS = arm64 arm64e
+# Basic environment configuration
+
+export SYSROOT = $(THEOS)/sdks/iPhoneOS16.0.sdk/
 export TARGET = iphone:clang:latest:13.0
+export ROOTLESS = 1
 
-FINALPACKAGE = 1
-DEBUG = 0
+# Theos optimisations
 
-INSTALL_TARGET_PROCESSES = SpringBoard
-TWEAK_NAME = PeepReborn
-$(TWEAK_NAME)_FILES = $(TWEAK_NAME).x
-$(TWEAK_NAME)_CFLAGS = -fobjc-arc -Wno-error=deprecated-declarations
-$(TWEAK_NAME)_EXTRA_FRAMEWORKS = UIKit
+export FINALPACKAGE = 1
+export DEBUG = 0
+export THEOS_LEAN_AND_MEAN = 1
+export USING_JINX = 1
 
-SUBPROJECTS += Prefs
+# Define subprojects
+
+SUBPROJECTS += Prefs Tweak
+
+# Theos makefiles to include
 
 include $(THEOS)/makefiles/common.mk
 include $(THEOS_MAKE_PATH)/aggregate.mk
-include $(THEOS_MAKE_PATH)/tweak.mk
+
+# Rootless support? with a question mark
+
+ifeq ($(ROOTLESS),1)
+internal-stage::
+	@$(PRINT_FORMAT_MAKING) "Moving files to rootless paths"
+	$(ECHO_NOTHING)mkdir -p "$(THEOS_STAGING_DIR)/var/jb/Library"$(ECHO_END)
+	$(ECHO_NOTHING)mv "$(THEOS_STAGING_DIR)/Library" "$(THEOS_STAGING_DIR)/var/jb"$(ECHO_END)
+
+before-package::
+	@$(PRINT_FORMAT_MAKING) "Patching control file architecture"
+	$(ECHO_NOTHING)sed -i '' 's/iphoneos-arm/iphoneos-arm64/' "$(THEOS_STAGING_DIR)/DEBIAN/control"$(ECHO_END)
+endif

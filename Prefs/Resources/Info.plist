@@ -7,7 +7,7 @@
 	<key>CFBundleExecutable</key>
 	<string>PeepRebornPrefs</string>
 	<key>CFBundleIdentifier</key>
-	<string>ai.paisseon.peepreborn</string>
+	<string>lilliana.peepreborn</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundlePackageType</key>
@@ -19,6 +19,6 @@
 	<key>CFBundleVersion</key>
 	<string>1.0</string>
 	<key>NSPrincipalClass</key>
-	<string>PEEPSettingsController</string>
+	<string>PeepRebornPrefs.RootListController</string>
 </dict>
 </plist>
